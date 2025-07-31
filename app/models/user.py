@@ -12,7 +12,7 @@ class User(BaseModel):
     password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
-    phone = db.Column(db.String(20), unique=True, nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
     birth_date = db.Column(db.Date, nullable=True)
 
     def set_password(self, password):
