@@ -3,8 +3,10 @@ from .routes import register_blueprints
 from .config import get_config
 from .extensions import db, cors, ma, jwt
 from .errors import register_error_handlers
+from .models import User
 # from flask_swagger_ui import get_swaggerui_blueprint
 import os
+
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
