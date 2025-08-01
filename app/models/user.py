@@ -1,6 +1,13 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 from .base import BaseModel
+import enum
+
+
+class UserRole(enum.Enum):
+    """Enum para definir os tipos de cargo do usuário"""
+    ADMIN = "admin"
+    USER = "user"
 
 
 class User(BaseModel):
@@ -14,6 +21,7 @@ class User(BaseModel):
     last_name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20), nullable=True)
     birth_date = db.Column(db.Date, nullable=True)
+    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.USER)
 
     def set_password(self, password):
         """Define a senha do usuário com hash"""
@@ -28,5 +36,15 @@ class User(BaseModel):
         """Retorna o nome completo do usuário"""
         return f"{self.first_name} {self.last_name}"
 
+    @property
+    def is_admin(self):
+        """Verifica se o usuário é administrador"""
+        return self.role == UserRole.ADMIN
+
+    @property
+    def is_regular_user(self):
+        """Verifica se o usuário é um usuário regular"""
+        return self.role == UserRole.USER
+
     def __repr__(self):
-        return f'<User {self.username} ({self.email})>'
+        return f'<User {self.username} ({self.email}) - {self.role.value}>'
