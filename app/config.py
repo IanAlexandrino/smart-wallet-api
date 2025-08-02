@@ -16,11 +16,21 @@ class BaseConfig:
 
     # JWT
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     JWT_HEADER_TYPE = 'Bearer'
     JWT_BLACKLIST_ENABLED = True
     JWT_BLACKLIST_TOKEN_CHECKS = ['access', 'refresh']
+
+    # Redis
+    REDIS_URL = os.getenv('REDIS_URL')
+
+    # Redis SSL Configuration (para Square Cloud)
+    REDIS_SSL_CERT_REQS = 'required'
+    REDIS_SSL_CA_CERTS = None  # Usa certificados do sistema
+    REDIS_SSL_CERTFILE = os.path.join(os.path.dirname(__file__), 'redis', 'ssl', 'certificate.pem')
+    REDIS_SSL_KEYFILE = os.path.join(os.path.dirname(__file__), 'redis', 'ssl', 'certificate.pem')
+    REDIS_SSL_CHECK_HOSTNAME = False  # Square Cloud usa certificado wildcard
 
     # Swagger/OpenAPI
     SHOW_SWAGGER = False

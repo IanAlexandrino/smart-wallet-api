@@ -210,3 +210,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Security - SSL Certificates and Keys
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+app/redis/ssl/certificate.pem
+
+# Security - Sensitive Configuration Files
+secrets.json
+credentials.json
+*.credentials
+.secrets
