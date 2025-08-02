@@ -72,7 +72,7 @@ def test_redis_operations():
 
         return {
             "ping": ping_result,
-            "set_get": retrieved_value.decode() if retrieved_value else None,
+            "set_get": (retrieved_value.decode() if isinstance(retrieved_value, bytes) else retrieved_value) if retrieved_value else None,
             "ttl_test": ttl_value > 0,
             "status": "healthy"
         }
