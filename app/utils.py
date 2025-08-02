@@ -4,10 +4,34 @@ from math import ceil
 from werkzeug.exceptions import BadRequest
 
 
-def now_br():
-    """Retorna datetime atual no fuso horário do Brasil (UTC-3)"""
+def now_br(format_type: str = "datetime"):
+    """
+    Retorna datetime atual no fuso horário do Brasil (UTC-3) em diferentes formatos.
+
+    Args:
+        format_type: Tipo de retorno desejado
+            - "datetime" (padrão): Retorna objeto datetime
+            - "iso": Retorna string em formato ISO
+            - "timestamp": Retorna timestamp (float)
+
+    Returns:
+        datetime, str ou float dependendo do format_type
+
+    Raises:
+        ValueError: Se format_type não for válido
+    """
     brazil_tz = timezone(timedelta(hours=-3))
-    return datetime.now(brazil_tz)
+    dt = datetime.now(brazil_tz)
+
+    if format_type == "datetime":
+        return dt
+    elif format_type == "isoformat":
+        return dt.isoformat()
+    elif format_type == "timestamp":
+        return dt.timestamp()
+    else:
+        raise ValueError(
+            f"format_type '{format_type}' não é válido. Use: 'datetime', 'isoformat' ou 'timestamp'")
 
 
 class PaginationHelper:
