@@ -11,7 +11,7 @@ def now_br(format_type: str = "datetime"):
     Args:
         format_type: Tipo de retorno desejado
             - "datetime" (padrão): Retorna objeto datetime
-            - "iso": Retorna string em formato ISO
+            - "isoformat": Retorna string em formato ISO
             - "timestamp": Retorna timestamp (float)
 
     Returns:
