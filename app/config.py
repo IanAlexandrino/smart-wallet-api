@@ -28,8 +28,27 @@ class BaseConfig:
     # Redis SSL Configuration (para Square Cloud)
     REDIS_SSL_CERT_REQS = 'required'
     REDIS_SSL_CA_CERTS = None  # Usa certificados do sistema
-    REDIS_SSL_CERTFILE = os.path.join(os.path.dirname(__file__), 'redis', 'ssl', 'certificate.pem')
-    REDIS_SSL_KEYFILE = os.path.join(os.path.dirname(__file__), 'redis', 'ssl', 'certificate.pem')
+    
+    # Caminho do arquivo de certificado SSL configurável via variável de ambiente, com fallback
+    _default_certfile = os.path.join(os.path.dirname(__file__), 'redis', 'ssl', 'certificate.pem')
+    _certfile_env = os.getenv('REDIS_SSL_CERTFILE', _default_certfile)
+    if _certfile_env and not os.path.isfile(_certfile_env):
+        import warnings
+        warnings.warn(f"REDIS_SSL_CERTFILE '{_certfile_env}' não existe. As operações SSL podem falhar.")
+        REDIS_SSL_CERTFILE = None
+    else:
+        REDIS_SSL_CERTFILE = _certfile_env
+    
+    # Caminho do arquivo de chave SSL configurável por meio de variável de ambiente, com fallback  
+    _default_keyfile = os.path.join(os.path.dirname(__file__), 'redis', 'ssl', 'certificate.pem')
+    _keyfile_env = os.getenv('REDIS_SSL_KEYFILE', _default_keyfile)
+    if _keyfile_env and not os.path.isfile(_keyfile_env):
+        import warnings
+        warnings.warn(f"REDIS_SSL_KEYFILE '{_keyfile_env}' não existe. As operações SSL podem falhar.")
+        REDIS_SSL_KEYFILE = None
+    else:
+        REDIS_SSL_KEYFILE = _keyfile_env
+        
     REDIS_SSL_CHECK_HOSTNAME = False  # Square Cloud usa certificado wildcard
 
     # Swagger/OpenAPI

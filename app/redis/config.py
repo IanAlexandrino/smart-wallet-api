@@ -61,10 +61,8 @@ def configure_redis_ssl(app):
             port=parsed_url.port or 6380,  # Porta padrão SSL Redis
             password=parsed_url.password,
             ssl=True,
-            ssl_cert_reqs=ssl.CERT_REQUIRED if ca_cert_file and os.path.exists(
-                ca_cert_file) else ssl.CERT_NONE,
-            ssl_ca_certs=ca_cert_file if ca_cert_file and os.path.exists(
-                ca_cert_file) else None,
+            ssl_cert_reqs=ssl.CERT_REQUIRED if ca_cert_file and os.path.exists(ca_cert_file) else ssl.CERT_NONE,
+            ssl_ca_certs=ca_cert_file if ca_cert_file and os.path.exists(ca_cert_file) else None,
             ssl_check_hostname=ssl_context.check_hostname,
             socket_connect_timeout=10,
             socket_timeout=10,
