@@ -1,9 +1,10 @@
 from flask import Flask
 from .routes import register_blueprints
 from .config import get_config
-from .extensions import db, cors, ma, jwt
+from .extensions import db, cors, ma, jwt, redis_store
 from .errors import register_error_handlers
 from .models import User
+from .services.jwt_service import check_if_token_revoked
 # from flask_swagger_ui import get_swaggerui_blueprint
 import os
 
@@ -23,6 +24,10 @@ def create_app():
     cors.init_app(app)
     jwt.init_app(app)
     ma.init_app(app)
+    redis_store.init_app(app)
+
+    # Configura JWT callbacks para blacklist
+    jwt.token_in_blocklist_loader(check_if_token_revoked)
 
     # Registra os blueprints
     register_blueprints(app)
