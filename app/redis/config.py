@@ -32,14 +32,28 @@ def configure_redis_ssl(app):
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = app.config.get(
             'REDIS_SSL_CHECK_HOSTNAME', False)
-        # Para certificados auto-assinados da Square Cloud
-        ssl_context.verify_mode = ssl.CERT_NONE
 
-        # Tenta carregar certificado se existir
+        # Configuração de verificação de certificado mais segura
+        ca_cert_file = app.config.get('REDIS_SSL_CA_CERTS')
+        if ca_cert_file and os.path.exists(ca_cert_file):
+            # Se temos o CA, usa verificação completa
+            ssl_context.load_verify_locations(cafile=ca_cert_file)
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+            app.logger.info(f"CA certificate carregado: {ca_cert_file}")
+        else:
+            # Fallback: Para Square Cloud com certificados auto-assinados
+            # Ainda não é ideal, mas pelo menos logamos o aviso
+            ssl_context.verify_mode = ssl.CERT_NONE
+            app.logger.warning(
+                "⚠️  SSL certificate verification DISABLED - não é seguro para produção!")
+            app.logger.warning(
+                "📋 Configure REDIS_SSL_CA_CERTS para maior segurança")
+
+        # Tenta carregar certificado cliente se existir
         cert_file = app.config.get('REDIS_SSL_CERTFILE')
         if cert_file and os.path.exists(cert_file):
             ssl_context.load_cert_chain(cert_file)
-            app.logger.info(f"Certificado SSL carregado: {cert_file}")
+            app.logger.info(f"Certificado cliente SSL carregado: {cert_file}")
 
         # Cria conexão Redis com SSL
         redis_client = redis.Redis(
