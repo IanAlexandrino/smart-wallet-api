@@ -12,6 +12,8 @@ from werkzeug.exceptions import (
     Conflict,
     ServiceUnavailable
 )
+from flask_jwt_extended.exceptions import JWTDecodeError
+from jwt.exceptions import DecodeError  # Exceção do PyJWT
 from ..responses import error_response
 
 
@@ -47,6 +49,52 @@ def register_http_handlers(app):
     def handle_unauthorized(err):
         return error_response(
             message=err.description or "Acesso não autorizado.",
+            code="UNAUTHORIZED",
+            status_code=401
+        )
+
+    @app.errorhandler(JWTDecodeError)
+    def handle_jwt_decode_error(err):
+        """Handler específico para erros de decodificação JWT (Flask-JWT-Extended)"""
+        error_msg = str(err).lower()
+
+        # Mapeia tipos específicos de erro JWT para mensagens user-friendly
+        if "not enough segments" in error_msg:
+            message = "Refresh token inválido ou malformado. Faça login novamente."
+        elif "invalid payload" in error_msg or "expecting value" in error_msg:
+            message = "Refresh token corrompido. Faça login novamente."
+        elif "signature" in error_msg:
+            message = "Refresh token com assinatura inválida. Faça login novamente."
+        elif "expired" in error_msg:
+            message = "Refresh token expirado. Faça login novamente."
+        else:
+            message = "Refresh token inválido. Faça login novamente."
+
+        return error_response(
+            message=message,
+            code="UNAUTHORIZED",
+            status_code=401
+        )
+
+    @app.errorhandler(DecodeError)
+    def handle_decode_error(err):
+        """Handler específico para erros de decodificação JWT (PyJWT)"""
+        error_msg = str(err).lower()
+
+        # Mapeia tipos específicos de erro PyJWT para mensagens user-friendly
+        if "not enough segments" in error_msg:
+            message = "Refresh token inválido ou malformado. Faça login novamente."
+        elif "invalid payload" in error_msg or "expecting value" in error_msg:
+            message = "Refresh token corrompido. Faça login novamente."
+        elif "signature" in error_msg:
+            message = "Refresh token com assinatura inválida. Faça login novamente."
+        elif "expired" in error_msg:
+            message = "Refresh token expirado. Faça login novamente."
+        else:
+            message = "Refresh token inválido. Faça login novamente."
+
+        return error_response(
+            message=message,
             code="UNAUTHORIZED",
             status_code=401
         )
