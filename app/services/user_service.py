@@ -5,6 +5,7 @@ from werkzeug.exceptions import NotFound, Conflict, BadRequest
 
 from app.extensions import db
 from app.models import User
+from app.models.user import UserRole
 
 
 class UserService:
@@ -46,7 +47,8 @@ class UserService:
                 first_name=data['first_name'].strip().title(),
                 last_name=data['last_name'].strip().title(),
                 phone=data.get('phone'),
-                birth_date=data.get('birth_date')
+                birth_date=data.get('birth_date'),
+                role=UserRole.USER  # Define explicitamente o role padrão
             )
 
             # Define a senha

@@ -21,7 +21,7 @@ class User(BaseModel):
     last_name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20), nullable=True)
     birth_date = db.Column(db.Date, nullable=True)
-    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.USER)
+    role = db.Column(db.Enum(UserRole, name='userrole'), nullable=False, default=UserRole.USER)
 
     def set_password(self, password):
         """Define a senha do usuário com hash"""
@@ -30,6 +30,19 @@ class User(BaseModel):
     def check_password(self, password):
         """Verifica se a senha fornecida é válida"""
         return check_password_hash(self.password_hash, password)
+
+    def set_role(self, role):
+        """Define o role do usuário garantindo compatibilidade entre bancos"""
+        if isinstance(role, str):
+            # Se for string, converte para enum
+            role = UserRole(role.upper())
+        elif isinstance(role, UserRole):
+            # Se já for enum, usa diretamente
+            pass
+        else:
+            raise ValueError(f"Role inválido: {role}")
+
+        self.role = role
 
     @property
     def full_name(self):
