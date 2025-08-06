@@ -46,6 +46,9 @@ class AuthService:
             # Cria o usuário
             user = UserService.create_user(user_data)
 
+            # Log para debug - verifica se role foi definido corretamente
+            current_app.logger.debug(f"Usuário criado com role: {user.role} (tipo: {type(user.role)})")
+
             # Gera tokens para o usuário
             tokens = JWTService.create_tokens(
                 user_id=user.id,
@@ -96,6 +99,9 @@ class AuthService:
             # Verifica se usuário está ativo
             if not user.is_active:
                 raise Unauthorized('Conta desativada. Entre em contato com o suporte.')
+
+            # Log para debug - verifica se role está correto
+            current_app.logger.debug(f"Login para usuário com role: {user.role} (tipo: {type(user.role)})")
 
             # Claims para o token
             additional_claims = {
