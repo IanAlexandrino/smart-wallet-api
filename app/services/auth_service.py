@@ -93,6 +93,10 @@ class AuthService:
             if not user or not user.check_password(password):
                 raise Unauthorized('Credenciais inválidas')
 
+            # Verifica se usuário está ativo
+            if not user.is_active:
+                raise Unauthorized('Conta desativada. Entre em contato com o suporte.')
+
             # Claims para o token
             additional_claims = {
                 'username': user.username,
@@ -235,7 +239,7 @@ class AuthService:
 
             # Verifica se usuário ainda existe e está ativo
             user = UserService.get_user_by_id(user_id)
-            if not user:
+            if not user or not user.is_active:
                 return False
 
             # Verifica role se especificado
