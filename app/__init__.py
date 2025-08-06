@@ -5,7 +5,7 @@ from .extensions import db, cors, ma, jwt, redis_store
 from .errors import register_error_handlers
 from .models import User
 from .services.jwt_service import check_if_token_revoked
-# from flask_swagger_ui import get_swaggerui_blueprint
+from .swagger import configure_swagger_ui
 import os
 
 
@@ -35,15 +35,7 @@ def create_app():
     # Registra os handlers de erro
     register_error_handlers(app)
 
-    # OpenAPI/SWAGGER
-    # if app.config.get('SHOW_SWAGGER'):
-    #     SWAGGER_URL = '/dsl-agendamentos/v1/docs'
-    #     API_URL = '/static/swagger.yaml'
-    #     swagger_bp = get_swaggerui_blueprint(
-    #         SWAGGER_URL,
-    #         API_URL,
-    #         config={'app_name': "DSL Agendamentos API"}
-    #     )
-    #     app.register_blueprint(swagger_bp, url_prefix=SWAGGER_URL)
+    # Configura Swagger UI
+    configure_swagger_ui(app)
 
     return app

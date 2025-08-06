@@ -1,0 +1,634 @@
+openapi: 3.0.0
+info:
+  title: Smart Wallet API
+  description: API para gerenciamento de carteira digital com autenticação JWT Bearer Token.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Servidor de desenvolvimento
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer token. Obtenha fazendo login em `/auth/login`.
+
+        Formato: `Bearer {token}`
+
+  schemas:
+    # Schemas de Request
+    LoginRequest:
+      type: object
+      required:
+        - identifier
+        - password
+      properties:
+        identifier:
+          type: string
+          description: Username ou email do usuário
+          example: "usuario@exemplo.com"
+          minLength: 3
+          maxLength: 120
+        password:
+          type: string
+          description: Senha do usuário
+          example: "senha123"
+          minLength: 6
+          maxLength: 128
+          format: password
+
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - confirm_password
+        - first_name
+        - last_name
+      properties:
+        username:
+          type: string
+          description: Nome de usuário único
+          example: "meuusername"
+          minLength: 3
+          maxLength: 80
+          pattern: "^[a-zA-Z0-9_]+$"
+        email:
+          type: string
+          description: Email do usuário
+          example: "usuario@exemplo.com"
+          format: email
+          maxLength: 120
+        password:
+          type: string
+          description: Senha do usuário (mínimo 6 caracteres)
+          example: "senha123"
+          minLength: 6
+          maxLength: 128
+          format: password
+        confirm_password:
+          type: string
+          description: Confirmação da senha (deve ser igual à senha)
+          example: "senha123"
+          minLength: 6
+          maxLength: 128
+          format: password
+        first_name:
+          type: string
+          description: Primeiro nome
+          example: "João"
+          minLength: 2
+          maxLength: 50
+        last_name:
+          type: string
+          description: Sobrenome
+          example: "Silva"
+          minLength: 2
+          maxLength: 50
+        phone:
+          type: string
+          description: Telefone (opcional)
+          example: "+5511999999999"
+          nullable: true
+        birth_date:
+          type: string
+          description: Data de nascimento (opcional)
+          example: "1990-01-01"
+          format: date
+          nullable: true
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Token de renovação válido
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+
+    # Schemas de Response
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID único do usuário
+          example: 1
+        username:
+          type: string
+          description: Nome de usuário
+          example: "meuusername"
+        email:
+          type: string
+          description: Email do usuário
+          example: "usuario@exemplo.com"
+        first_name:
+          type: string
+          description: Primeiro nome
+          example: "João"
+        last_name:
+          type: string
+          description: Sobrenome
+          example: "Silva"
+        phone:
+          type: string
+          description: Telefone
+          example: "+5511999999999"
+          nullable: true
+        birth_date:
+          type: string
+          description: Data de nascimento
+          example: "1990-05-15"
+          format: date
+          nullable: true
+        full_name:
+          type: string
+          description: Nome completo do usuário
+          example: "João Silva"
+        role:
+          type: string
+          description: Role do usuário
+          example: "user"
+          enum: ["user", "admin"]
+        is_active:
+          type: boolean
+          description: Se o usuário está ativo
+          example: true
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: Token de acesso JWT
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        refresh_token:
+          type: string
+          description: Token de renovação JWT
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        token_type:
+          type: string
+          description: Tipo do token
+          example: "Bearer"
+        expires_in:
+          type: integer
+          description: Tempo de expiração do access token em segundos
+          example: 900
+        refresh_expires_in:
+          type: integer
+          description: Tempo de expiração do refresh token em segundos
+          example: 2592000
+
+    RegisterResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: Token de acesso JWT
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        refresh_token:
+          type: string
+          description: Token de renovação JWT
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        token_type:
+          type: string
+          description: Tipo do token
+          example: "Bearer"
+        expires_in:
+          type: integer
+          description: Tempo de expiração do access token em segundos
+          example: 900
+        refresh_expires_in:
+          type: integer
+          description: Tempo de expiração do refresh token em segundos
+          example: 2592000
+        user:
+          $ref: "#/components/schemas/UserResponse"
+
+    RefreshResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: Novo token de acesso JWT
+          example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+        token_type:
+          type: string
+          description: Tipo do token
+          example: "Bearer"
+        expires_in:
+          type: integer
+          description: Tempo de expiração do novo access token em segundos
+          example: 900
+
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Status da operação
+          example: "success"
+        message:
+          type: string
+          description: Mensagem descritiva do resultado
+          example: "Operação realizada com sucesso"
+        data:
+          type: object
+          description: Dados da resposta (varia por endpoint)
+          nullable: true
+        timestamp:
+          type: string
+          description: Timestamp da resposta
+          example: "2025-08-06T05:03:19.366171-03:00"
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Status da operação
+          example: "error"
+        message:
+          type: string
+          description: Mensagem de erro
+          example: "Dados de entrada inválidos."
+        code:
+          type: string
+          description: Código específico do erro
+          example: "INVALID_DATA"
+        errors:
+          type: object
+          description: Detalhes dos erros de validação
+          nullable: true
+        timestamp:
+          type: string
+          description: Timestamp da resposta
+          example: "2025-08-06T05:11:05.282577-03:00"
+          format: date-time
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Autenticação
+      summary: Registrar novo usuário
+      description: |
+        Cria uma nova conta de usuário no sistema.
+
+        **Validações:**
+        - Username deve ser único e conter apenas letras, números e underscore
+        - Email deve ser único e ter formato válido
+        - Senha deve ter pelo menos 6 caracteres
+        - Confirmação de senha deve ser igual à senha
+      operationId: registerUser
+      security: [] # Endpoint público - sem autenticação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            examples:
+              usuario_completo:
+                summary: Usuário com todos os campos
+                value:
+                  username: "joaosilva"
+                  email: "joao@exemplo.com"
+                  password: "senha123"
+                  confirm_password: "senha123"
+                  first_name: "João"
+                  last_name: "Silva"
+                  phone: "+5511999999999"
+                  birth_date: "1990-05-15"
+              usuario_basico:
+                summary: Usuário com campos obrigatórios
+                value:
+                  username: "maria123"
+                  email: "maria@exemplo.com"
+                  password: "minhasenha"
+                  confirm_password: "minhasenha"
+                  first_name: "Maria"
+                  last_name: "Santos"
+      responses:
+        "201":
+          description: Usuário registrado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/RegisterResponse"
+              examples:
+                registro_sucesso:
+                  summary: Registro bem-sucedido
+                  value:
+                    status: "success"
+                    message: "Usuário registrado com sucesso"
+                    data:
+                      access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      token_type: "Bearer"
+                      expires_in: 900
+                      refresh_expires_in: 2592000
+                      user:
+                        id: 5
+                        username: "joaosilva2"
+                        email: "joao2@exemplo.com"
+                        first_name: "João"
+                        last_name: "Silva"
+                        full_name: "João Silva"
+                        phone: "+5511999999999"
+                        birth_date: "1990-05-15"
+                        role: "user"
+                        is_active: true
+                    timestamp: "2025-08-06T05:03:19.366171-03:00"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validacao_erro:
+                  summary: Erro de validação
+                  value:
+                    status: "error"
+                    message: "Dados de entrada inválidos."
+                    code: "INVALID_DATA"
+                    errors:
+                      password: ["Senha deve conter pelo menos um número"]
+                      email: ["Email inválido"]
+                    timestamp: "2025-08-06T05:11:05.282577-03:00"
+        "409":
+          description: Usuário já existe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usuario_existente:
+                  summary: Email ou username já existe
+                  value:
+                    status: "error"
+                    code: "CONFLICT"
+                    message: "Email já está em uso"
+                    timestamp: "2025-08-06T05:13:51.315532-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      tags:
+        - Autenticação
+      summary: Fazer login
+      description: |
+        Autentica um usuário existente usando username ou email + senha.
+
+        **Aceita:**
+        - Username + senha
+        - Email + senha
+
+        **Retorna:**
+        - Access token (válido por 1 hora)
+        - Refresh token (válido por 30 dias)
+        - Dados do usuário
+      operationId: loginUser
+      security: [] # Endpoint público - sem autenticação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              login_email:
+                summary: Login com email
+                value:
+                  identifier: "joao@exemplo.com"
+                  password: "senha123"
+              login_username:
+                summary: Login com username
+                value:
+                  identifier: "joaosilva"
+                  password: "senha123"
+      responses:
+        "200":
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TokenResponse"
+              examples:
+                login_sucesso:
+                  summary: Login bem-sucedido
+                  value:
+                    status: "success"
+                    message: "Login realizado com sucesso"
+                    data:
+                      access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      token_type: "Bearer"
+                      expires_in: 900
+                      refresh_expires_in: 2592000
+                    timestamp: "2025-08-06T06:12:44.933692-03:00"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                credenciais_invalidas:
+                  summary: Senha incorreta
+                  value:
+                    status: "error"
+                    message: "Credenciais inválidas"
+                    code: "UNAUTHORIZED"
+                    timestamp: "2025-08-06T05:11:05.282577-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/refresh:
+    post:
+      tags:
+        - Autenticação
+      summary: Renovar access token
+      description: |
+        Gera um novo access token usando um refresh token válido.
+
+        **Importante:**
+        - O refresh token deve estar válido (não expirado)
+        - O refresh token não deve estar na blacklist
+        - Retorna apenas um novo access token (refresh token permanece o mesmo)
+      operationId: refreshToken
+      security: [] # Endpoint público - usa refresh token no body
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+            examples:
+              refresh_request:
+                summary: Renovação de token
+                value:
+                  refresh_token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+      responses:
+        "200":
+          description: Token renovado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/RefreshResponse"
+              examples:
+                refresh_sucesso:
+                  summary: Token renovado com sucesso
+                  value:
+                    status: "success"
+                    message: "Token renovado com sucesso"
+                    data:
+                      access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      token_type: "Bearer"
+                      expires_in: 900
+                    timestamp: "2025-08-06T05:03:19.366171-03:00"
+        "400":
+          description: Dados inválidos ou malformados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                dados_invalidos:
+                  summary: Request malformado
+                  value:
+                    status: "error"
+                    message: "Refresh token é obrigatório"
+                    code: "INVALID_DATA"
+                    timestamp: "2025-08-06T05:11:05.282577-03:00"
+        "401":
+          description: Refresh token inválido, expirado ou revogado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_malformado:
+                  summary: Token malformado
+                  value:
+                    status: "error"
+                    message: "Refresh token inválido ou malformado. Faça login novamente."
+                    code: "UNAUTHORIZED"
+                    timestamp: "2025-08-06T05:11:05.282577-03:00"
+                token_revogado:
+                  summary: Token revogado
+                  value:
+                    status: "error"
+                    message: "Refresh token foi revogado. Faça login novamente."
+                    code: "UNAUTHORIZED"
+                    timestamp: "2025-08-06T05:11:05.282577-03:00"
+                sessao_encerrada:
+                  summary: Sessão encerrada em todos dispositivos
+                  value:
+                    status: "error"
+                    message: "Sua sessão foi encerrada em todos os dispositivos. Faça login novamente."
+                    code: "UNAUTHORIZED"
+                    timestamp: "2025-08-06T05:11:05.282577-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      tags:
+        - Autenticação
+      summary: Fazer logout
+      description: |
+        Faz logout do usuário atual, revogando **todos os tokens** em todos os dispositivos.
+
+        **Comportamento:**
+        - Revoga todos os access tokens do usuário
+        - Revoga todos os refresh tokens do usuário  
+        - Efetua logout em todos os dispositivos
+        - Requer autenticação (Bearer token no header)
+
+        **Segurança:**
+        - Após o logout, todos os tokens se tornam inválidos
+        - O usuário precisará fazer login novamente em todos os dispositivos
+      operationId: logoutUser
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logout realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              examples:
+                logout_sucesso:
+                  summary: Logout bem-sucedido
+                  value:
+                    status: "success"
+                    message: "Logout realizado com sucesso em todos os dispositivos"
+                    timestamp: "2025-08-06T05:03:19.366171-03:00"
+        "401":
+          description: Token inválido ou expirado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_invalido:
+                  summary: Token expirado
+                  value:
+                    status: "error"
+                    message: "Acesso não autorizado"
+                    code: "UNAUTHORIZED"
+                    timestamp: "2025-08-06T05:11:05.282577-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+tags:
+  - name: Autenticação
+    description: Operações de autenticação e gerenciamento de tokens.
