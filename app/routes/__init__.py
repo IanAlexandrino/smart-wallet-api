@@ -1,6 +1,9 @@
+# Importa todos os blueprints
+from .auth import auth_bp
+
 # Lista de todos os blueprints para registro automático
 BLUEPRINTS = [
-
+    auth_bp,
 ]
 
 
