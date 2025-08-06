@@ -4,8 +4,8 @@ Implementa access tokens, refresh tokens e gerenciamento de blacklist.
 """
 
 import json
-from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple, Any
+from datetime import datetime
+from typing import Dict, Optional, Any
 from flask import current_app
 from flask_jwt_extended import (
     create_access_token,
@@ -14,6 +14,9 @@ from flask_jwt_extended import (
     get_jwt,
     get_jwt_identity,
 )
+from flask_jwt_extended.exceptions import JWTDecodeError
+from jwt.exceptions import DecodeError
+from werkzeug.exceptions import Unauthorized, BadRequest
 from ..extensions import redis_store
 from ..models.user import User
 from ..utils import now_br
@@ -103,7 +106,7 @@ class JWTService:
             Dict contendo novo access_token e metadados
 
         Raises:
-            ValueError: Se refresh token for inválido ou rate limit atingido
+            Unauthorized: Se refresh token for inválido ou revogado
         """
         try:
             # Decodifica o refresh token
@@ -111,24 +114,14 @@ class JWTService:
             user_id = int(decoded_token['sub'])  # Converte de volta para int
             jti = decoded_token['jti']
 
-            # Verifica rate limiting
-            can_refresh, rate_limit_error = JWTService.can_refresh_token(
-                user_id)
-            if not can_refresh:
-                raise ValueError(rate_limit_error)
-
             # Verifica se o refresh token está na blacklist
             if JWTService.is_token_blacklisted(jti):
-                raise ValueError("Refresh token foi revogado")
+                raise Unauthorized("Refresh token foi revogado. Faça login novamente.")
 
             # Verifica se todos os tokens do usuário foram revogados
             token_iat = decoded_token.get('iat', 0)
             if JWTService.is_user_tokens_revoked(user_id, token_iat):
-                raise ValueError(
-                    "Refresh token foi revogado (revogação em massa)")
-
-            # Incrementa contador de refresh
-            JWTService.increment_refresh_count(user_id)
+                raise Unauthorized("Sua sessão foi encerrada em todos os dispositivos. Faça login novamente.")
 
             # Cria novo access token
             claims = {
@@ -148,8 +141,22 @@ class JWTService:
                 "expires_in": int(current_app.config['JWT_ACCESS_TOKEN_EXPIRES'].total_seconds())
             }
 
+        except Unauthorized:
+            # Re-raise Unauthorized exceptions (são tratadas pelo handler)
+            raise
+        except (JWTDecodeError, DecodeError):
+            # Re-raise exceções JWT (serão tratadas pelo handler específico)
+            raise
+        except ValueError as e:
+            # Erros de conversão de dados -> 400 Bad Request
+            if "invalid literal for int()" in str(e):
+                raise BadRequest("Token contém dados inválidos.")
+            else:
+                raise BadRequest(f"Dados do token inválidos: {str(e)}")
         except Exception as e:
-            raise ValueError(f"Erro ao renovar token: {str(e)}")
+            # Outros erros inesperados -> 401 Unauthorized (mais seguro)
+            current_app.logger.error(f"Erro inesperado no refresh token: {str(e)}")
+            raise Unauthorized("Erro ao processar refresh token. Faça login novamente.")
 
     @staticmethod
     def revoke_token(jti: str, token_type: str = "access") -> bool:
@@ -187,12 +194,10 @@ class JWTService:
             )
 
             if result is not False:
-                current_app.logger.info(
-                    f"Token {jti} ({token_type}) adicionado à blacklist")
+                current_app.logger.info(f"Token {jti} ({token_type}) adicionado à blacklist")
                 return True
             else:
-                current_app.logger.warning(
-                    f"Falha ao adicionar token {jti} à blacklist (Redis indisponível)")
+                current_app.logger.warning(f"Falha ao adicionar token {jti} à blacklist (Redis indisponível)")
                 return False
 
         except Exception as e:
@@ -227,8 +232,7 @@ class JWTService:
             if result:
                 current_app.logger.info(f"Token {jti} encontrado na blacklist")
             else:
-                current_app.logger.debug(
-                    f"Token {jti} não está na blacklist (ou Redis indisponível)")
+                current_app.logger.debug(f"Token {jti} não está na blacklist (ou Redis indisponível)")
 
             return bool(result)
 
@@ -267,8 +271,7 @@ class JWTService:
         try:
             return get_jwt()
         except Exception as e:
-            current_app.logger.error(
-                f"Erro ao obter claims do token: {str(e)}")
+            current_app.logger.error(f"Erro ao obter claims do token: {str(e)}")
             return None
 
     @staticmethod
@@ -295,8 +298,7 @@ class JWTService:
             }
 
         except Exception as e:
-            current_app.logger.error(
-                f"Erro ao obter informações do token: {str(e)}")
+            current_app.logger.error(f"Erro ao obter informações do token: {str(e)}")
             return None
 
     @staticmethod
@@ -336,17 +338,14 @@ class JWTService:
             )
 
             if result is not False:
-                current_app.logger.info(
-                    f"Todos os tokens do usuário {user_id} foram revogados")
+                current_app.logger.info(f"Todos os tokens do usuário {user_id} foram revogados")
                 return True
             else:
-                current_app.logger.warning(
-                    f"Falha ao revogar tokens do usuário {user_id}")
+                current_app.logger.warning(f"Falha ao revogar tokens do usuário {user_id}")
                 return False
 
         except Exception as e:
-            current_app.logger.error(
-                f"Erro ao revogar tokens do usuário {user_id}: {str(e)}")
+            current_app.logger.error(f"Erro ao revogar tokens do usuário {user_id}: {str(e)}")
             return False
 
     @staticmethod
@@ -374,15 +373,33 @@ class JWTService:
                 return False
 
             revocation_data = json.loads(result)
-            revoked_at = datetime.fromisoformat(revocation_data["revoked_at"])
-            token_created_at = datetime.fromtimestamp(token_iat)
+
+            # Usa now_br() para garantir consistência de timezone
+            revoked_at_str = revocation_data["revoked_at"]
+            revoked_at = datetime.fromisoformat(revoked_at_str)
+
+            # Obtém timezone do Brasil usando now_br() para consistência
+            brazil_tz_reference = now_br("datetime").tzinfo
+
+            # Converte timestamp do token para datetime com timezone do Brasil
+            token_created_at = datetime.fromtimestamp(token_iat, tz=brazil_tz_reference)
+
+            # Normaliza revoked_at para o mesmo timezone
+            if revoked_at.tzinfo is not None:
+                revoked_at = revoked_at.astimezone(brazil_tz_reference)
+            else:
+                revoked_at = revoked_at.replace(tzinfo=brazil_tz_reference)
+
+            current_app.logger.debug(
+                f"Verificando revogação: usuário {user_id}, "
+                f"token criado em: {token_created_at.isoformat()}, "
+                f"revogado em: {revoked_at.isoformat()}")
 
             # Se o token foi criado antes da revogação, está inválido
             return token_created_at < revoked_at
 
         except Exception as e:
-            current_app.logger.error(
-                f"Erro ao verificar revogação do usuário {user_id}: {str(e)}")
+            current_app.logger.error(f"Erro ao verificar revogação do usuário {user_id}: {str(e)}")
             return False
 
     @staticmethod
@@ -409,69 +426,6 @@ class JWTService:
         except Exception as e:
             current_app.logger.error(f"Erro na limpeza de tokens: {str(e)}")
             return 0
-
-    @staticmethod
-    def get_blacklist_stats() -> Dict[str, Any]:
-        """
-        Obtém estatísticas da blacklist.
-
-        Returns:
-            Dict com estatísticas dos tokens na blacklist
-        """
-        try:
-            pattern = f"{JWTService.BLACKLIST_PREFIX}*"
-            keys = redis_store.keys(pattern)
-
-            stats = {
-                "total_blacklisted": len(keys),
-                "access_tokens": 0,
-                "refresh_tokens": 0,
-                "user_revocations": 0,
-                "oldest_token": None,
-                "newest_token": None
-            }
-
-            timestamps = []
-
-            for key in keys:
-                try:
-                    data = redis_store.get(key)
-                    if data:
-                        token_data = json.loads(data)
-                        token_type = token_data.get("type", "unknown")
-
-                        if token_type == "access":
-                            stats["access_tokens"] += 1
-                        elif token_type == "refresh":
-                            stats["refresh_tokens"] += 1
-                        elif "user_blacklist:" in key.decode() if isinstance(key, bytes) else key:
-                            stats["user_revocations"] += 1
-
-                        # Coleta timestamps para estatísticas de tempo
-                        revoked_at = token_data.get("revoked_at")
-                        if revoked_at:
-                            timestamps.append(revoked_at)
-
-                except Exception:
-                    continue
-
-            # Estatísticas de tempo
-            if timestamps:
-                timestamps.sort()
-                stats["oldest_token"] = timestamps[0]
-                stats["newest_token"] = timestamps[-1]
-
-            return stats
-
-        except Exception as e:
-            current_app.logger.error(f"Erro ao obter estatísticas: {str(e)}")
-            return {
-                "error": str(e),
-                "total_blacklisted": 0,
-                "access_tokens": 0,
-                "refresh_tokens": 0,
-                "user_revocations": 0
-            }
 
 
 # Callback para verificar se token está na blacklist
