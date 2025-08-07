@@ -5,6 +5,10 @@ from werkzeug.exceptions import NotFound, Conflict, BadRequest
 
 from app.extensions import db
 from app.models import User
+from app.logging_config import get_service_logger
+
+# Logger específico para este serviço
+logger = get_service_logger('user_service')
 
 
 class UserService:
@@ -33,10 +37,12 @@ class UserService:
             existing_user_by_username = UserService.get_user_by_username(
                 username)
             if existing_user_by_username:
+                logger.warning(f"Tentativa de criar usuário com username já existente: {username}")
                 raise Conflict('Username já está em uso')
 
             existing_user_by_email = UserService.get_user_by_email(email)
             if existing_user_by_email:
+                logger.warning(f"Tentativa de criar usuário com email já existente: {email}")
                 raise Conflict('Email já está em uso')
 
             # Cria o usuário
@@ -56,24 +62,27 @@ class UserService:
             user.set_password(data['password'])
 
             # Log para debug - verifica se role está correto
-            from flask import current_app
-            current_app.logger.debug(f'Usuário criado com role: {user.role} (tipo: {type(user.role)})')
+            logger.debug(f'Usuário criado com role: {user.role} (tipo: {type(user.role)})')
 
             # Salva no banco
             db.session.add(user)
             db.session.commit()
 
+            logger.info(f"Usuário criado com sucesso: {user.username} (ID: {user.id})")
             return user
 
         except (Conflict, BadRequest):
             raise
         except IntegrityError:
             db.session.rollback()
+            logger.error(f"Erro de integridade ao criar usuário: {data.get('username', 'unknown')}")
             raise BadRequest('Erro de integridade dos dados')
         except ValueError as e:
+            logger.error(f"Erro de validação ao criar usuário: {str(e)}")
             raise BadRequest(str(e))
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            logger.error(f"Erro inesperado ao criar usuário: {str(e)}")
             raise
 
     @staticmethod
@@ -87,6 +96,7 @@ class UserService:
         Returns:
             User ou None se não encontrado
         """
+        logger.debug(f"Buscando usuário por ID: {user_id}")
         return db.session.query(User).filter_by(id=user_id, is_active=True).first()
 
     @staticmethod
@@ -134,6 +144,7 @@ class UserService:
         try:
             user = UserService.get_user_by_id(user_id)
             if not user:
+                logger.warning(f"Tentativa de atualizar usuário inexistente: {user_id}")
                 raise NotFound('Usuário não encontrado')
 
             # Atualiza campos fornecidos
@@ -142,17 +153,21 @@ class UserService:
                     setattr(user, field, value)
 
             db.session.commit()
+            logger.info(f"Usuário atualizado com sucesso: {user.username} (ID: {user.id})")
             return user
 
         except (NotFound, BadRequest):
             raise
         except IntegrityError:
             db.session.rollback()
+            logger.error(f"Erro de integridade ao atualizar usuário {user_id}")
             raise BadRequest('Erro de integridade dos dados')
         except ValueError as e:
+            logger.error(f"Erro de validação ao atualizar usuário {user_id}: {str(e)}")
             raise BadRequest(str(e))
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            logger.error(f"Erro inesperado ao atualizar usuário {user_id}: {str(e)}")
             raise
 
     @staticmethod
@@ -172,22 +187,28 @@ class UserService:
         try:
             user = UserService.get_user_by_id(user_id)
             if not user:
+                logger.warning(f"Tentativa de alterar senha de usuário inexistente: {user_id}")
                 raise NotFound('Usuário não encontrado')
 
             # Verifica senha atual
             if not user.check_password(current_password):
+                logger.warning(f"Tentativa de alterar senha com senha atual incorreta para usuário {user_id}")
                 raise BadRequest('Senha atual incorreta')
 
             # Define nova senha
             user.set_password(new_password)
             db.session.commit()
 
+            logger.info(f"Senha alterada com sucesso para usuário {user_id}")
+
         except (NotFound, BadRequest):
             raise
         except ValueError as e:
+            logger.error(f"Erro de validação ao alterar senha do usuário {user_id}: {str(e)}")
             raise BadRequest(str(e))
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            logger.error(f"Erro inesperado ao alterar senha do usuário {user_id}: {str(e)}")
             raise
 
     @staticmethod
@@ -204,15 +225,19 @@ class UserService:
         try:
             user = UserService.get_user_by_id(user_id)
             if not user:
+                logger.warning(f"Tentativa de desativar usuário inexistente: {user_id}")
                 raise NotFound('Usuário não encontrado')
 
             user.delete(soft_delete=True)
             db.session.commit()
 
+            logger.info(f"Usuário desativado com sucesso: {user.username} (ID: {user_id})")
+
         except NotFound:
             raise
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            logger.error(f"Erro inesperado ao desativar usuário {user_id}: {str(e)}")
             raise
 
     @staticmethod
@@ -232,17 +257,20 @@ class UserService:
         try:
             user = db.session.query(User).get(user_id)  # Busca mesmo inativos
             if not user:
+                logger.warning(f"Tentativa de restaurar usuário inexistente: {user_id}")
                 raise NotFound('Usuário não encontrado')
 
             user.restore()
             db.session.commit()
 
+            logger.info(f"Usuário restaurado com sucesso: {user.username} (ID: {user_id})")
             return user
 
         except NotFound:
             raise  # Re-raise HTTP exceptions
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            logger.error(f"Erro inesperado ao restaurar usuário {user_id}: {str(e)}")
             raise  # Propaga o erro original
 
     @staticmethod

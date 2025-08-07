@@ -20,6 +20,10 @@ from werkzeug.exceptions import Unauthorized, BadRequest
 from ..extensions import redis_store
 from ..models.user import User
 from ..utils import now_br
+from ..logging_config import get_service_logger
+
+# Logger específico para este serviço
+logger = get_service_logger('jwt_service')
 
 
 class JWTService:
@@ -45,7 +49,7 @@ class JWTService:
         try:
             return operation(*args, **kwargs)
         except Exception as e:
-            current_app.logger.error(f"Erro na operação Redis: {str(e)}")
+            logger.error(f"Erro na operação Redis: {str(e)}")
             return fallback_result
 
     @staticmethod
@@ -155,7 +159,7 @@ class JWTService:
                 raise BadRequest(f"Dados do token inválidos: {str(e)}")
         except Exception as e:
             # Outros erros inesperados -> 401 Unauthorized (mais seguro)
-            current_app.logger.error(f"Erro inesperado no refresh token: {str(e)}")
+            logger.error(f"Erro inesperado no refresh token: {str(e)}")
             raise Unauthorized("Erro ao processar refresh token. Faça login novamente.")
 
     @staticmethod
@@ -194,14 +198,14 @@ class JWTService:
             )
 
             if result is not False:
-                current_app.logger.info(f"Token {jti} ({token_type}) adicionado à blacklist")
+                logger.info(f"Token {jti} ({token_type}) adicionado à blacklist")
                 return True
             else:
-                current_app.logger.warning(f"Falha ao adicionar token {jti} à blacklist (Redis indisponível)")
+                logger.warning(f"Falha ao adicionar token {jti} à blacklist (Redis indisponível)")
                 return False
 
         except Exception as e:
-            current_app.logger.error(f"Erro ao revogar token {jti}: {str(e)}")
+            logger.error(f"Erro ao revogar token {jti}: {str(e)}")
             return False
 
     @staticmethod
@@ -230,15 +234,14 @@ class JWTService:
             )
 
             if result:
-                current_app.logger.info(f"Token {jti} encontrado na blacklist")
+                logger.info(f"Token {jti} encontrado na blacklist")
             else:
-                current_app.logger.debug(f"Token {jti} não está na blacklist (ou Redis indisponível)")
+                logger.debug(f"Token {jti} não está na blacklist (ou Redis indisponível)")
 
             return bool(result)
 
         except Exception as e:
-            current_app.logger.error(
-                f"Erro ao verificar blacklist para token {jti}: {str(e)}")
+            logger.error(f"Erro ao verificar blacklist para token {jti}: {str(e)}")
             # Em caso de erro, assume que o token NÃO está na blacklist
             # Isso evita bloquear usuários com tokens válidos quando o Redis está com problemas
             return False
@@ -256,7 +259,7 @@ class JWTService:
             user_id = get_jwt_identity()
             return int(user_id) if user_id else None
         except Exception as e:
-            current_app.logger.error(f"Erro ao obter ID do usuário: {str(e)}")
+            logger.error(f"Erro ao obter ID do usuário: {str(e)}")
             return None
 
     @staticmethod
@@ -271,7 +274,7 @@ class JWTService:
         try:
             return get_jwt()
         except Exception as e:
-            current_app.logger.error(f"Erro ao obter claims do token: {str(e)}")
+            logger.error(f"Erro ao obter claims do token: {str(e)}")
             return None
 
     @staticmethod
@@ -298,7 +301,7 @@ class JWTService:
             }
 
         except Exception as e:
-            current_app.logger.error(f"Erro ao obter informações do token: {str(e)}")
+            logger.error(f"Erro ao obter informações do token: {str(e)}")
             return None
 
     @staticmethod
@@ -338,14 +341,14 @@ class JWTService:
             )
 
             if result is not False:
-                current_app.logger.info(f"Todos os tokens do usuário {user_id} foram revogados")
+                logger.info(f"Todos os tokens do usuário {user_id} foram revogados")
                 return True
             else:
-                current_app.logger.warning(f"Falha ao revogar tokens do usuário {user_id}")
+                logger.warning(f"Falha ao revogar tokens do usuário {user_id}")
                 return False
 
         except Exception as e:
-            current_app.logger.error(f"Erro ao revogar tokens do usuário {user_id}: {str(e)}")
+            logger.error(f"Erro ao revogar tokens do usuário {user_id}: {str(e)}")
             return False
 
     @staticmethod
@@ -390,16 +393,17 @@ class JWTService:
             else:
                 revoked_at = revoked_at.replace(tzinfo=brazil_tz_reference)
 
-            current_app.logger.debug(
+            logger.debug(
                 f"Verificando revogação: usuário {user_id}, "
                 f"token criado em: {token_created_at.isoformat()}, "
-                f"revogado em: {revoked_at.isoformat()}")
+                f"revogado em: {revoked_at.isoformat()}"
+            )
 
             # Se o token foi criado antes da revogação, está inválido
             return token_created_at < revoked_at
 
         except Exception as e:
-            current_app.logger.error(f"Erro ao verificar revogação do usuário {user_id}: {str(e)}")
+            logger.error(f"Erro ao verificar revogação do usuário {user_id}: {str(e)}")
             return False
 
     @staticmethod
@@ -424,7 +428,7 @@ class JWTService:
             return removed
 
         except Exception as e:
-            current_app.logger.error(f"Erro na limpeza de tokens: {str(e)}")
+            logger.error(f"Erro na limpeza de tokens: {str(e)}")
             return 0
 
 
