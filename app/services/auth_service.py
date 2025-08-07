@@ -4,7 +4,6 @@ Implementa operações de login, registro, logout e gerenciamento de tokens.
 """
 
 from typing import Dict, Any, Optional, Tuple
-from flask import current_app
 from flask_jwt_extended import get_jwt
 from werkzeug.exceptions import BadRequest, Unauthorized, Conflict, ServiceUnavailable
 
@@ -12,6 +11,10 @@ from app.models.user import User
 from app.services.user_service import UserService
 from app.services.jwt_service import JWTService
 from app.utils import now_br
+from app.logging_config import get_service_logger
+
+# Logger específico para este serviço
+logger = get_service_logger('auth_service')
 
 
 class AuthService:
@@ -38,8 +41,7 @@ class AuthService:
             if existing_user:
                 raise Conflict('Email já está em uso')
 
-            existing_user = UserService.get_user_by_username(
-                user_data['username'])
+            existing_user = UserService.get_user_by_username(user_data['username'])
             if existing_user:
                 raise Conflict('Username já está em uso')
 
@@ -47,7 +49,7 @@ class AuthService:
             user = UserService.create_user(user_data)
 
             # Log para debug - verifica se role foi definido corretamente
-            current_app.logger.debug(f"Usuário criado com role: {user.role} (tipo: {type(user.role)})")
+            logger.debug(f"Usuário criado com role: {user.role} (tipo: {type(user.role)})")
 
             # Gera tokens para o usuário
             tokens = JWTService.create_tokens(
@@ -58,14 +60,14 @@ class AuthService:
                 }
             )
 
-            current_app.logger.info(f"Usuário {user.username} registrado com sucesso")
+            logger.info(f"Usuário {user.username} registrado com sucesso")
 
             return user, tokens
 
         except (Conflict, BadRequest):
             raise
         except Exception as e:
-            current_app.logger.error(f"Erro no registro do usuário: {str(e)}")
+            logger.error(f"Erro no registro do usuário: {str(e)}")
             raise BadRequest("Erro interno no registro do usuário")
 
     @staticmethod
@@ -101,7 +103,7 @@ class AuthService:
                 raise Unauthorized('Conta desativada. Entre em contato com o suporte.')
 
             # Log para debug - verifica se role está correto
-            current_app.logger.debug(f"Login para usuário com role: {user.role} (tipo: {type(user.role)})")
+            logger.debug(f"Login para usuário com role: {user.role} (tipo: {type(user.role)})")
 
             # Claims para o token
             additional_claims = {
@@ -115,14 +117,14 @@ class AuthService:
                 additional_claims=additional_claims
             )
 
-            current_app.logger.info(f"Login bem-sucedido para usuário {user.username}")
+            logger.info(f"Login bem-sucedido para usuário {user.username}")
 
             return user, tokens
 
         except (Unauthorized, BadRequest):
             raise
         except Exception as e:
-            current_app.logger.error(f"Erro na autenticação: {str(e)}")
+            logger.error(f"Erro na autenticação: {str(e)}")
             raise BadRequest("Erro interno na autenticação")
 
     @staticmethod
@@ -150,27 +152,27 @@ class AuthService:
 
             # Verifica se o token atual já foi revogado
             if JWTService.is_token_blacklisted(jti):
-                current_app.logger.warning(f"Tentativa de logout com token já revogado: {jti}")
+                logger.warning(f"Tentativa de logout com token já revogado: {jti}")
                 raise Unauthorized("Este token já foi invalidado. Faça login novamente para obter um novo token.")
 
             # Verifica se todos os tokens do usuário já foram revogados
             token_iat = current_token.get('iat', 0)
             if JWTService.is_user_tokens_revoked(user_id, token_iat):
-                current_app.logger.warning(f"Tentativa de logout com token de usuário já revogado: usuário {user_id}")
+                logger.warning(f"Tentativa de logout com token de usuário já revogado: usuário {user_id}")
                 raise Unauthorized("Sua sessão foi encerrada em todos os dispositivos. Faça login novamente.")
 
             if revoke_all_devices:
                 # Revoga todos os tokens do usuário
                 success = JWTService.revoke_all_user_tokens(user_id)
                 if success:
-                    current_app.logger.info(f"Logout de todos os dispositivos para usuário {user_id}")
+                    logger.info(f"Logout de todos os dispositivos para usuário {user_id}")
                 else:
                     raise ServiceUnavailable("Falha ao revogar tokens de todos os dispositivos")
             else:
                 # Revoga apenas o token atual
                 success = JWTService.revoke_token(jti, token_type)
                 if success:
-                    current_app.logger.info(f"Logout do dispositivo atual para usuário {user_id}")
+                    logger.info(f"Logout do dispositivo atual para usuário {user_id}")
                 else:
                     raise ServiceUnavailable("Falha ao revogar token atual")
 
@@ -179,7 +181,7 @@ class AuthService:
         except ServiceUnavailable:
             raise
         except Exception as e:
-            current_app.logger.error(f"Erro no logout: {str(e)}")
+            logger.error(f"Erro no logout: {str(e)}")
             raise ServiceUnavailable("Erro interno no serviço de logout")
 
     @staticmethod
@@ -198,7 +200,7 @@ class AuthService:
             return UserService.get_user_by_id(user_id)
 
         except Exception as e:
-            current_app.logger.error(f"Erro ao obter usuário atual: {str(e)}")
+            logger.error(f"Erro ao obter usuário atual: {str(e)}")
             return None
 
     @staticmethod
@@ -256,5 +258,5 @@ class AuthService:
             return True
 
         except Exception as e:
-            current_app.logger.error(f"Erro ao validar token: {str(e)}")
+            logger.error(f"Erro ao validar token: {str(e)}")
             return False

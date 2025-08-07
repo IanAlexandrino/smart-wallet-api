@@ -7,6 +7,10 @@ import os
 import ssl
 import redis
 from urllib.parse import urlparse
+from app.logging_config import get_redis_logger
+
+# Logger específico para este módulo Redis
+logger = get_redis_logger('config')
 
 
 def configure_redis_ssl(app):
@@ -19,19 +23,20 @@ def configure_redis_ssl(app):
     Returns:
         redis.Redis: Cliente Redis configurado ou None se falhar
     """
+    logger.debug("Iniciando configuração Redis SSL")
     redis_url = app.config.get('REDIS_URL')
     if not redis_url:
-        app.logger.warning("REDIS_URL não configurada")
+        logger.warning("REDIS_URL não configurada")
         return None
 
     try:
         # Parse da URL do Redis
         parsed_url = urlparse(redis_url)
+        logger.debug(f"URL Redis parseada: {parsed_url.hostname}:{parsed_url.port}")
 
         # Configuração SSL
         ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = app.config.get(
-            'REDIS_SSL_CHECK_HOSTNAME', False)
+        ssl_context.check_hostname = app.config.get('REDIS_SSL_CHECK_HOSTNAME', False)
         # Para certificados auto-assinados da Square Cloud
         ssl_context.verify_mode = ssl.CERT_NONE
 
@@ -39,7 +44,7 @@ def configure_redis_ssl(app):
         cert_file = app.config.get('REDIS_SSL_CERTFILE')
         if cert_file and os.path.exists(cert_file):
             ssl_context.load_cert_chain(cert_file)
-            app.logger.info(f"Certificado SSL carregado: {cert_file}")
+            logger.info(f"Certificado SSL carregado: {cert_file}")
 
         # Cria conexão Redis com SSL
         redis_client = redis.Redis(
@@ -58,7 +63,7 @@ def configure_redis_ssl(app):
 
         # Testa a conexão
         redis_client.ping()
-        app.logger.info("Conexão Redis SSL estabelecida com sucesso")
+        logger.info("Conexão Redis SSL estabelecida com sucesso")
 
         # Substitui a instância padrão do FlaskRedis
         from app.extensions import redis_store
@@ -67,7 +72,7 @@ def configure_redis_ssl(app):
         return redis_client
 
     except Exception as e:
-        app.logger.error(f"Erro ao configurar Redis SSL: {str(e)}")
+        logger.error(f"Erro ao configurar Redis SSL: {str(e)}")
         return None
 
 
