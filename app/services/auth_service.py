@@ -8,7 +8,7 @@ from flask import current_app
 from flask_jwt_extended import get_jwt
 from werkzeug.exceptions import BadRequest, Unauthorized, Conflict, ServiceUnavailable
 
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.services.user_service import UserService
 from app.services.jwt_service import JWTService
 from app.utils import now_br
@@ -54,7 +54,7 @@ class AuthService:
                 user_id=user.id,
                 additional_claims={
                     'username': user.username,
-                    'role': user.role.value
+                    'role': user.role
                 }
             )
 
@@ -106,7 +106,7 @@ class AuthService:
             # Claims para o token
             additional_claims = {
                 'username': user.username,
-                'role': user.role.value
+                'role': user.role
             }
 
             # Gera tokens
@@ -220,13 +220,13 @@ class AuthService:
             'can_manage_settings': user.is_admin,
             'is_admin': user.is_admin,
             'is_regular_user': user.is_regular_user,
-            'role': user.role.value
+            'role': user.role
         }
 
         return permissions
 
     @staticmethod
-    def validate_token_claims(required_role: Optional[UserRole] = None) -> bool:
+    def validate_token_claims(required_role: Optional[str] = None) -> bool:
         """
         Valida claims do token atual.
 
