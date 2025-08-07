@@ -236,8 +236,8 @@ class UserResponseSchema(ma.Schema):
     is_active = fields.Bool()
 
     def get_role(self, obj):
-        """Converte enum para string"""
-        return obj.role.value if obj.role else None
+        """Retorna role como string"""
+        return obj.role if obj.role else None
 
 
 class TokenResponseSchema(ma.Schema):
