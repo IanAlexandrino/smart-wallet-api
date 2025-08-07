@@ -7,7 +7,7 @@ from flask_swagger_ui import get_swaggerui_blueprint
 def configure_swagger_ui(app):
     """Configura a documentação Swagger UI."""
     # URLs para documentação
-    SWAGGER_URL = '/docs'  # URL da interface Swagger UI
+    SWAGGER_URL = '/api/v1/docs'  # URL da interface Swagger UI
     API_URL = '/static/swagger.yaml'  # URL do arquivo de especificação
 
     # Configuração do Swagger UI
@@ -29,10 +29,10 @@ def configure_swagger_ui(app):
             'showExtensions': True,
             'showCommonExtensions': True,
             'supportedSubmitMethods': [
-                'get', 
-                'post', 
-                'put', 
-                'delete', 
+                'get',
+                'post',
+                'put',
+                'delete',
                 'patch'
             ],
             'oauth2RedirectUrl': None,
