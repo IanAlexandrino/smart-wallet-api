@@ -39,6 +39,19 @@ class User(BaseModel):
         """Verifica se a senha fornecida é válida"""
         return check_password_hash(self.password_hash, password)
 
+    def set_role(self, role):
+        """Define o role do usuário garantindo compatibilidade entre bancos"""
+        if isinstance(role, str):
+            # Se for string, converte para enum
+            role = UserRole(role.upper())
+        elif isinstance(role, UserRole):
+            # Se já for enum, usa diretamente
+            pass
+        else:
+            raise ValueError(f"Role inválido: {role}")
+
+        self.role = role
+
     @property
     def full_name(self):
         """Retorna o nome completo do usuário"""
