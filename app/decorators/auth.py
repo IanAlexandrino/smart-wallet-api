@@ -34,7 +34,7 @@ def role_required(*allowed_roles):
     Decorator que requer um ou mais roles específicos.
 
     Args:
-        *allowed_roles: Roles permitidos (UserRole enums)
+        *allowed_roles: Roles permitidos (strings: 'admin', 'user')
     """
     def decorator(f):
         @wraps(f)

@@ -5,7 +5,6 @@ from werkzeug.exceptions import NotFound, Conflict, BadRequest
 
 from app.extensions import db
 from app.models import User
-from app.models.user import UserRole
 
 
 class UserService:
@@ -47,20 +46,18 @@ class UserService:
                 first_name=data['first_name'].strip().title(),
                 last_name=data['last_name'].strip().title(),
                 phone=data.get('phone'),
-                birth_date=data.get('birth_date'),
-                role=UserRole.USER  # Define explicitamente o role padrão
+                birth_date=data.get('birth_date')
             )
 
             # Define a role explicitamente
-            user.set_role(UserRole.USER)
+            user.set_role('user')
 
             # Define a senha
             user.set_password(data['password'])
 
             # Log para debug - verifica se role está correto
             from flask import current_app
-            current_app.logger.debug(
-                f'Usuário criado com role: {user.role} (tipo: {type(user.role)}) - valor: {user.role.value}')
+            current_app.logger.debug(f'Usuário criado com role: {user.role} (tipo: {type(user.role)})')
 
             # Salva no banco
             db.session.add(user)
