@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Smart Wallet API
-  description: API para gerenciamento de carteira digital com autenticação JWT Bearer Token.
+  description: API para gerenciamento de carteira digital.
   version: 1.0.0
 
 servers:
@@ -272,6 +272,187 @@ components:
           description: Timestamp da resposta
           example: "2025-08-06T05:11:05.282577-03:00"
           format: date-time
+
+    # Schemas para rotas de usuários
+    UserCreateRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - first_name
+        - last_name
+      properties:
+        username:
+          type: string
+          description: Nome de usuário único
+          example: "novo.usuario"
+          minLength: 3
+          maxLength: 80
+          pattern: "^[a-zA-Z0-9_]+$"
+        email:
+          type: string
+          description: Email do usuário
+          example: "novo@empresa.com"
+          format: email
+          maxLength: 120
+        password:
+          type: string
+          description: Senha do usuário (mínimo 6 caracteres)
+          example: "senha123"
+          minLength: 6
+          maxLength: 128
+          format: password
+        first_name:
+          type: string
+          description: Primeiro nome
+          example: "João"
+          minLength: 2
+          maxLength: 50
+        last_name:
+          type: string
+          description: Sobrenome
+          example: "Silva"
+          minLength: 2
+          maxLength: 50
+        phone:
+          type: string
+          description: Telefone (opcional)
+          example: "+5511999999999"
+          nullable: true
+        birth_date:
+          type: string
+          description: Data de nascimento (opcional)
+          example: "1990-01-01"
+          format: date
+          nullable: true
+        role:
+          type: string
+          description: Role do usuário (padrão 'user')
+          example: "user"
+          enum: ["user", "admin"]
+          default: "user"
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: Primeiro nome
+          example: "João"
+          minLength: 2
+          maxLength: 50
+        last_name:
+          type: string
+          description: Sobrenome
+          example: "Silva"
+          minLength: 2
+          maxLength: 50
+        phone:
+          type: string
+          description: Telefone
+          example: "+5511999999999"
+          nullable: true
+        birth_date:
+          type: string
+          description: Data de nascimento
+          example: "1990-01-01"
+          format: date
+          nullable: true
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - current_password
+        - new_password
+        - confirm_password
+      properties:
+        current_password:
+          type: string
+          description: Senha atual do usuário
+          example: "senhaAtual123"
+          minLength: 6
+          maxLength: 128
+          format: password
+        new_password:
+          type: string
+          description: Nova senha do usuário
+          example: "novaSenha456"
+          minLength: 6
+          maxLength: 128
+          format: password
+        confirm_password:
+          type: string
+          description: Confirmação da nova senha
+          example: "novaSenha456"
+          minLength: 6
+          maxLength: 128
+          format: password
+
+    UserListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: Lista de usuários
+          items:
+            $ref: "#/components/schemas/UserResponse"
+        pagination:
+          $ref: "#/components/schemas/PaginationInfo"
+        search:
+          type: string
+          description: Termo de busca aplicado
+          example: "joão"
+          nullable: true
+        role:
+          type: string
+          description: Filtro de role aplicado
+          example: "admin"
+          enum: ["user", "admin"]
+          nullable: true
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Página atual
+          example: 1
+          minimum: 1
+        per_page:
+          type: integer
+          description: Itens por página
+          example: 20
+          minimum: 1
+          maximum: 100
+        total_items:
+          type: integer
+          description: Total de itens
+          example: 150
+          minimum: 0
+        total_pages:
+          type: integer
+          description: Total de páginas
+          example: 8
+          minimum: 1
+        has_prev:
+          type: boolean
+          description: Se existe página anterior
+          example: false
+        has_next:
+          type: boolean
+          description: Se existe próxima página
+          example: true
+        prev_page:
+          type: integer
+          description: Número da página anterior
+          example: null
+          nullable: true
+        next_page:
+          type: integer
+          description: Número da próxima página
+          example: 2
+          nullable: true
 
 paths:
   /auth/register:
@@ -629,6 +810,948 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # Rotas de Usuários
+  /users:
+    post:
+      tags:
+        - Usuários
+      summary: Criar novo usuário
+      description: |
+        Cria um novo usuário no sistema. Operação restrita a administradores.
+
+        **Validações:**
+        - Username deve ser único e conter apenas letras, números e underscore
+        - Email deve ser único e ter formato válido
+        - Senha deve ter pelo menos 6 caracteres
+        - Campos obrigatórios: username, email, password, first_name, last_name
+
+        **Permissões:**
+        - Apenas administradores podem criar usuários
+      operationId: createUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+            examples:
+              usuario_basico:
+                summary: Usuário básico
+                value:
+                  username: "novo.usuario"
+                  email: "novo@empresa.com"
+                  password: "senha123"
+                  first_name: "João"
+                  last_name: "Silva"
+              usuario_completo:
+                summary: Usuário com todos os campos
+                value:
+                  username: "admin.usuario"
+                  email: "admin@empresa.com"
+                  password: "senha123"
+                  first_name: "Maria"
+                  last_name: "Santos"
+                  phone: "+5511999999999"
+                  birth_date: "1985-03-15"
+                  role: "admin"
+      responses:
+        "201":
+          description: Usuário criado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserResponse"
+              examples:
+                usuario_criado:
+                  summary: Usuário criado
+                  value:
+                    status: "success"
+                    message: "Usuário criado com sucesso"
+                    data:
+                      id: 5
+                      username: "novo"
+                      email: "novo@empresa.com"
+                      first_name: "João"
+                      last_name: "Silva"
+                      phone: "+5511999999999"
+                      birth_date: "1990-01-01"
+                      full_name: "João Silva"
+                      role: "user"
+                      is_active: true
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                dados_invalidos:
+                  summary: Dados de entrada inválidos
+                  value:
+                    status: "error"
+                    message: "Dados de entrada inválidos"
+                    code: "BAD_REQUEST"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_required:
+                  summary: Token obrigatório
+                  value:
+                    status: "error"
+                    code: "TOKEN_REQUIRED"
+                    message: "Token de acesso obrigatório."
+                    timestamp: "2025-08-07T18:26:03.897062-03:00"
+        "403":
+          description: Sem permissão (apenas admins)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden:
+                  summary: Acesso negado
+                  value:
+                    status: "error"
+                    code: "FORBIDDEN"
+                    message: "Acesso negado. Role insuficiente"
+                    timestamp: "2025-08-07T19:29:16.717629-03:00"
+        "409":
+          description: Conflito - Username ou email já existem
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                username_duplicado:
+                  summary: Username já existe
+                  value:
+                    status: "error"
+                    message: "Username já está em uso"
+                    code: "CONFLICT"
+                    timestamp: "2025-08-08T04:42:07.557139-03:00"
+                email_duplicado:
+                  summary: Email já existe
+                  value:
+                    status: "error"
+                    message: "Email já está em uso"
+                    code: "CONFLICT"
+                    timestamp: "2025-08-08T04:42:07.557139-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                internal_error:
+                  summary: Erro interno
+                  value:
+                    status: "error"
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Erro interno do servidor"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+
+    get:
+      tags:
+        - Usuários
+      summary: Listar usuários
+      description: |
+        Lista usuários do sistema com paginação e filtros opcionais.
+
+        **Filtros disponíveis:**
+        - `search`: Busca por nome, email ou username
+        - `role`: Filtra por role (admin ou user)
+
+        **Paginação:**
+        - `page`: Número da página (padrão: 1)
+        - `per_page`: Itens por página (padrão: 20, máximo: 100)
+
+        **Permissões:**
+        - Apenas administradores podem listar usuários
+      operationId: listUsers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Número da página
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: per_page
+          in: query
+          description: Itens por página
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+        - name: search
+          in: query
+          description: Busca por nome, email ou username
+          required: false
+          schema:
+            type: string
+            example: "joão"
+        - name: role
+          in: query
+          description: Filtro por role
+          required: false
+          schema:
+            type: string
+            enum: ["user", "admin"]
+            example: "admin"
+      responses:
+        "200":
+          description: Lista de usuários retornada com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserListResponse"
+              examples:
+                lista_paginada:
+                  summary: Lista paginada de usuários
+                  value:
+                    status: "success"
+                    message: "Usuários listados com sucesso"
+                    data:
+                      data:
+                        - id: 1
+                          username: "admin"
+                          email: "admin@empresa.com"
+                          first_name: "Admin"
+                          last_name: "Sistema"
+                          phone: null
+                          birth_date: null
+                          full_name: "Admin Sistema"
+                          role: "admin"
+                          is_active: true
+                        - id: 2
+                          username: "joao.silva"
+                          email: "joao@empresa.com"
+                          first_name: "João"
+                          last_name: "Silva"
+                          phone: "+5511999999999"
+                          birth_date: "1990-05-15"
+                          full_name: "João Silva"
+                          role: "user"
+                          is_active: true
+                      pagination:
+                        page: 1
+                        per_page: 20
+                        total_items: 2
+                        total_pages: 1
+                        has_prev: false
+                        has_next: false
+                        prev_page: null
+                        next_page: null
+                    timestamp: "2025-08-07T14:30:00.000Z"
+                lista_filtrada:
+                  summary: Lista filtrada por role
+                  value:
+                    status: "success"
+                    message: "Usuários listados com sucesso"
+                    data:
+                      data:
+                        - id: 1
+                          username: "admin"
+                          email: "admin@empresa.com"
+                          first_name: "Admin"
+                          last_name: "Sistema"
+                          phone: null
+                          birth_date: null
+                          full_name: "Admin Sistema"
+                          role: "admin"
+                          is_active: true
+                      pagination:
+                        page: 1
+                        per_page: 20
+                        total_items: 1
+                        total_pages: 1
+                        has_prev: false
+                        has_next: false
+                        prev_page: null
+                        next_page: null
+                      role: "admin"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                parametros_invalidos:
+                  summary: Parâmetros de paginação inválidos
+                  value:
+                    status: "error"
+                    message: "Página deve ser um número positivo"
+                    code: "BAD_REQUEST"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_required:
+                  summary: Token obrigatório
+                  value:
+                    status: "error"
+                    code: "TOKEN_REQUIRED"
+                    message: "Token de acesso obrigatório."
+                    timestamp: "2025-08-07T18:26:03.897062-03:00"
+        "403":
+          description: Sem permissão (apenas admins)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden:
+                  summary: Acesso negado
+                  value:
+                    status: "error"
+                    code: "FORBIDDEN"
+                    message: "Acesso negado. Role insuficiente"
+                    timestamp: "2025-08-07T19:29:16.717629-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                internal_error:
+                  summary: Erro interno
+                  value:
+                    status: "error"
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Erro interno do servidor"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+
+  /users/{user_id}:
+    get:
+      tags:
+        - Usuários
+      summary: Buscar usuário por ID
+      description: |
+        Busca informações de um usuário específico pelo ID.
+
+        **Permissões:**
+        - Usuários podem acessar apenas suas próprias informações
+        - Administradores podem acessar informações de qualquer usuário
+      operationId: getUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          description: ID do usuário
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        "200":
+          description: Usuário encontrado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserResponse"
+              examples:
+                usuario_encontrado:
+                  summary: Usuário encontrado
+                  value:
+                    status: "success"
+                    message: "Usuário encontrado com sucesso"
+                    data:
+                      id: 1
+                      username: "joao.silva"
+                      email: "joao@empresa.com"
+                      first_name: "João"
+                      last_name: "Silva"
+                      phone: "+5511999999999"
+                      birth_date: "1990-05-15"
+                      full_name: "João Silva"
+                      role: "user"
+                      is_active: true
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_required:
+                  summary: Token obrigatório
+                  value:
+                    status: "error"
+                    code: "TOKEN_REQUIRED"
+                    message: "Token de acesso obrigatório."
+                    timestamp: "2025-08-07T18:26:03.897062-03:00"
+        "403":
+          description: Sem permissão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden:
+                  summary: Acesso negado
+                  value:
+                    status: "error"
+                    code: "FORBIDDEN"
+                    message: "Acesso negado. Role insuficiente"
+                    timestamp: "2025-08-07T19:29:16.717629-03:00"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usuario_nao_encontrado:
+                  summary: Usuário não existe
+                  value:
+                    status: "error"
+                    message: "Usuário não encontrado"
+                    code: "NOT_FOUND"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                internal_error:
+                  summary: Erro interno
+                  value:
+                    status: "error"
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Erro interno do servidor"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+
+    patch:
+      tags:
+        - Usuários
+      summary: Atualizar dados do usuário
+      description: |
+        Atualiza informações pessoais do usuário.
+
+        **Campos atualizáveis:**
+        - first_name, last_name, phone, birth_date
+        - Email e username NÃO podem ser alterados por esta rota
+
+        **Permissões:**
+        - Usuários podem atualizar apenas suas próprias informações
+        - Administradores podem atualizar informações de qualquer usuário
+      operationId: updateUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          description: ID do usuário
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+            examples:
+              atualizacao_basica:
+                summary: Atualização de nome
+                value:
+                  first_name: "João Carlos"
+                  last_name: "Silva Santos"
+              atualizacao_completa:
+                summary: Atualização completa
+                value:
+                  first_name: "João Carlos"
+                  last_name: "Silva Santos"
+                  phone: "+5511888888888"
+                  birth_date: "1990-05-20"
+      responses:
+        "200":
+          description: Usuário atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserResponse"
+              examples:
+                usuario_atualizado:
+                  summary: Usuário atualizado
+                  value:
+                    status: "success"
+                    message: "Usuário atualizado com sucesso"
+                    data:
+                      id: 1
+                      username: "joao.silva"
+                      email: "joao@empresa.com"
+                      first_name: "João Carlos"
+                      last_name: "Silva Santos"
+                      phone: "+5511888888888"
+                      birth_date: "1990-05-20"
+                      full_name: "João Carlos Silva Santos"
+                      role: "user"
+                      is_active: true
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "400":
+          description: Dados inválidos ou nenhum dado fornecido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                nenhum_dado:
+                  summary: Nenhum dado fornecido
+                  value:
+                    status: "error"
+                    message: "Nenhum dado fornecido para atualização"
+                    code: "BAD_REQUEST"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_required:
+                  summary: Token obrigatório
+                  value:
+                    status: "error"
+                    code: "TOKEN_REQUIRED"
+                    message: "Token de acesso obrigatório."
+                    timestamp: "2025-08-07T18:26:03.897062-03:00"
+        "403":
+          description: Sem permissão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden:
+                  summary: Acesso negado
+                  value:
+                    status: "error"
+                    code: "FORBIDDEN"
+                    message: "Acesso negado. Role insuficiente"
+                    timestamp: "2025-08-07T19:29:16.717629-03:00"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usuario_nao_encontrado:
+                  summary: Usuário não existe
+                  value:
+                    status: "error"
+                    code: "NOT_FOUND"
+                    message: "Usuário não encontrado"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                internal_error:
+                  summary: Erro interno
+                  value:
+                    status: "error"
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Erro interno do servidor"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+
+    delete:
+      tags:
+        - Usuários
+      summary: Desativar usuário
+      description: |
+        Desativa um usuário do sistema (soft delete). O usuário não será excluído 
+        permanentemente, apenas marcado como inativo.
+
+        **Permissões:**
+        - Usuários podem desativar apenas suas próprias contas
+        - Administradores podem desativar qualquer usuário
+      operationId: deactivateUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          description: ID do usuário
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        "200":
+          description: Usuário desativado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              examples:
+                usuario_desativado:
+                  summary: Usuário desativado
+                  value:
+                    status: "success"
+                    message: "Usuário desativado com sucesso"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_required:
+                  summary: Token obrigatório
+                  value:
+                    status: "error"
+                    code: "TOKEN_REQUIRED"
+                    message: "Token de acesso obrigatório."
+                    timestamp: "2025-08-07T18:26:03.897062-03:00"
+        "403":
+          description: Sem permissão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden:
+                  summary: Acesso negado
+                  value:
+                    status: "error"
+                    code: "FORBIDDEN"
+                    message: "Acesso negado. Role insuficiente"
+                    timestamp: "2025-08-07T19:29:16.717629-03:00"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usuario_nao_encontrado:
+                  summary: Usuário não existe
+                  value:
+                    status: "error"
+                    code: "NOT_FOUND"
+                    message: "Usuário não encontrado"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                internal_error:
+                  summary: Erro interno
+                  value:
+                    status: "error"
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Erro interno do servidor"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+
+  /users/{user_id}/password:
+    put:
+      tags:
+        - Usuários
+      summary: Alterar senha do usuário
+      description: |
+        Permite ao usuário alterar sua própria senha fornecendo a senha atual 
+        e a nova senha.
+
+        **Validações:**
+        - Senha atual deve estar correta
+        - Nova senha deve ter pelo menos 6 caracteres
+        - Confirmação de senha deve ser igual à nova senha
+
+        **Permissões:**
+        - Usuários podem alterar apenas suas próprias senhas
+        - Administradores podem alterar senhas de qualquer usuário
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          description: ID do usuário
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+            examples:
+              alteracao_senha:
+                summary: Alteração de senha
+                value:
+                  current_password: "senhaAtual123"
+                  new_password: "novaSenha456"
+                  confirm_password: "novaSenha456"
+      responses:
+        "200":
+          description: Senha alterada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              examples:
+                senha_alterada:
+                  summary: Senha alterada
+                  value:
+                    status: "success"
+                    message: "Senha alterada com sucesso"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "400":
+          description: Dados inválidos ou senha atual incorreta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                senha_atual_incorreta:
+                  summary: Senha atual incorreta
+                  value:
+                    status: "error"
+                    message: "Senha atual incorreta"
+                    code: "BAD_REQUEST"
+                    timestamp: "2025-08-07T14:30:00.000Z"
+                confirmacao_diferente:
+                  summary: Confirmação de senha diferente
+                  value:
+                    status: "error"
+                    message: "Confirmação de senha não confere"
+                    code: "BAD_REQUEST"
+                    errors:
+                      confirm_password:
+                        ["Confirmação de senha deve ser igual à nova senha"]
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_required:
+                  summary: Token obrigatório
+                  value:
+                    status: "error"
+                    code: "TOKEN_REQUIRED"
+                    message: "Token de acesso obrigatório."
+                    timestamp: "2025-08-07T18:26:03.897062-03:00"
+        "403":
+          description: Sem permissão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden:
+                  summary: Acesso negado
+                  value:
+                    status: "error"
+                    code: "FORBIDDEN"
+                    message: "Acesso negado. Role insuficiente"
+                    timestamp: "2025-08-07T19:29:16.717629-03:00"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usuario_nao_encontrado:
+                  summary: Usuário não existe
+                  value:
+                    status: "error"
+                    code: "NOT_FOUND"
+                    message: "Usuário não encontrado"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                internal_error:
+                  summary: Erro interno
+                  value:
+                    status: "error"
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Erro interno do servidor"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+
+  /users/{user_id}/restore:
+    patch:
+      tags:
+        - Usuários
+      summary: Reativar usuário
+      description: |
+        Reativa um usuário que foi previamente desativado. Operação restrita a administradores.
+
+        **Permissões:**
+        - Apenas administradores podem reativar usuários
+      operationId: restoreUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          description: ID do usuário
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        "200":
+          description: Usuário reativado com sucesso
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/UserResponse"
+              examples:
+                usuario_reativado:
+                  summary: Usuário reativado
+                  value:
+                    status: "success"
+                    message: "Usuário reativado com sucesso"
+                    data:
+                      id: 1
+                      username: "joao.silva"
+                      email: "joao@empresa.com"
+                      first_name: "João"
+                      last_name: "Silva"
+                      phone: "+5511999999999"
+                      birth_date: "1990-05-15"
+                      full_name: "João Silva"
+                      role: "user"
+                      is_active: true
+                    timestamp: "2025-08-07T14:30:00.000Z"
+        "401":
+          description: Não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                token_required:
+                  summary: Token obrigatório
+                  value:
+                    status: "error"
+                    code: "TOKEN_REQUIRED"
+                    message: "Token de acesso obrigatório."
+                    timestamp: "2025-08-07T18:26:03.897062-03:00"
+        "403":
+          description: Sem permissão (apenas admins)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                forbidden:
+                  summary: Acesso negado
+                  value:
+                    status: "error"
+                    code: "FORBIDDEN"
+                    message: "Acesso negado. Role insuficiente"
+                    timestamp: "2025-08-07T19:29:16.717629-03:00"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                usuario_nao_encontrado:
+                  summary: Usuário não existe
+                  value:
+                    status: "error"
+                    code: "NOT_FOUND"
+                    message: "Usuário não encontrado"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+        "500":
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                internal_error:
+                  summary: Erro interno
+                  value:
+                    status: "error"
+                    code: "INTERNAL_SERVER_ERROR"
+                    message: "Erro interno do servidor"
+                    timestamp: "2025-08-07T19:30:00.000000-03:00"
+
 tags:
   - name: Autenticação
     description: Operações de autenticação e gerenciamento de tokens.
+  - name: Usuários
+    description: Operações de gerenciamento de usuários.
