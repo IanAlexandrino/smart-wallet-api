@@ -55,8 +55,9 @@ class UserService:
                 birth_date=data.get('birth_date')
             )
 
-            # Define a role explicitamente
-            user.set_role('user')
+            # Define a role baseada no request ou 'user' como padrão
+            role = data.get('role', 'user')
+            user.set_role(role)
 
             # Define a senha
             user.set_password(data['password'])
@@ -297,5 +298,31 @@ class UserService:
                     User.username.ilike(search_term)
                 )
             )
+
+        return query
+
+    @staticmethod
+    def get_all_users(search: str = None, role: str = None):
+        """
+        Retorna query para busca de usuários ativos com filtros opcionais
+
+        Args:
+            search: Termo de busca (nome, email, username)
+            role: Filtro por role ('admin' ou 'user')
+
+        Returns:
+            Query: Query SQLAlchemy configurada com filtros e ordenação
+        """
+        logger.debug(f"Preparando query para usuários com filtros - search: {search}, role: {role}")
+
+        # Inicia com query base
+        query = UserService.get_users_query(search=search)
+
+        # Aplica filtro por role se fornecido
+        if role:
+            query = query.filter_by(role=role)
+
+        # Ordena por nome (A-Z)
+        query = query.order_by(User.first_name.asc(), User.last_name.asc())
 
         return query

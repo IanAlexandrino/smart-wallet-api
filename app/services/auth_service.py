@@ -45,7 +45,8 @@ class AuthService:
             if existing_user:
                 raise Conflict('Username já está em uso')
 
-            # Cria o usuário
+            # Cria o usuário - força role como 'user' no registro público
+            user_data['role'] = 'user'  # Força role como user no registro
             user = UserService.create_user(user_data)
 
             # Log para debug - verifica se role foi definido corretamente
