@@ -3,7 +3,10 @@ Health check e monitoramento Redis.
 Funções para verificar status e saúde da conexão Redis.
 """
 
-from flask import current_app
+from app.logging_config import get_redis_logger
+
+# Logger específico para este módulo Redis
+logger = get_redis_logger('health')
 
 
 def get_redis_connection_info():
@@ -13,11 +16,13 @@ def get_redis_connection_info():
     Returns:
         dict: Informações da conexão Redis
     """
+    logger.debug("Iniciando verificação de informações da conexão Redis")
     try:
         from app.extensions import redis_store
 
         # Tenta fazer ping
         ping_result = redis_store.ping()
+        logger.debug(f"Ping Redis: {'sucesso' if ping_result else 'falha'}")
 
         # Obtém informações da conexão
         connection_kwargs = getattr(
@@ -26,7 +31,7 @@ def get_redis_connection_info():
             {}
         )
 
-        return {
+        result = {
             "connected": ping_result,
             "ssl_enabled": connection_kwargs.get('ssl', False),
             "host": connection_kwargs.get('host', 'unknown'),
@@ -35,8 +40,11 @@ def get_redis_connection_info():
             "ssl_cert_reqs": connection_kwargs.get('ssl_cert_reqs', 'none')
         }
 
+        logger.info(f"Informações Redis obtidas com sucesso: {result['host']}:{result['port']}, SSL: {result['ssl_enabled']}")
+        return result
+
     except Exception as e:
-        current_app.logger.error(f"Erro ao obter informações Redis: {str(e)}")
+        logger.error(f"Erro ao obter informações Redis: {str(e)}")
         return {
             "connected": False,
             "error": str(e)
@@ -50,11 +58,13 @@ def test_redis_operations():
     Returns:
         dict: Resultado dos testes
     """
+    logger.debug("Iniciando teste de operações Redis")
     try:
         from app.extensions import redis_store
 
         # Teste de ping
         ping_result = redis_store.ping()
+        logger.debug(f"Teste de ping: {'OK' if ping_result else 'FAIL'}")
 
         # Teste de SET/GET
         test_key = "health_check_test"
@@ -63,6 +73,7 @@ def test_redis_operations():
         redis_store.set(test_key, test_value, ex=10)
         retrieved_value = redis_store.get(test_key)
         redis_store.delete(test_key)
+        logger.debug(f"Teste SET/GET: {'OK' if retrieved_value == test_value.encode() else 'FAIL'}")
 
         # Teste de TTL
         ttl_key = "ttl_test"
@@ -70,15 +81,21 @@ def test_redis_operations():
         ttl_value = redis_store.ttl(ttl_key)
         redis_store.delete(ttl_key)
 
-        return {
+        ttl_test_passed = ttl_value > 0
+        logger.debug(f"Teste TTL: {'OK' if ttl_test_passed else 'FAIL'}")
+
+        result = {
             "ping": ping_result,
             "set_get": retrieved_value.decode() if retrieved_value else None,
-            "ttl_test": ttl_value > 0,
+            "ttl_test": ttl_test_passed,
             "status": "healthy"
         }
 
+        logger.info("Teste de operações Redis concluído com sucesso")
+        return result
+
     except Exception as e:
-        current_app.logger.error(f"Erro no teste Redis: {str(e)}")
+        logger.error(f"Erro no teste Redis: {str(e)}")
         return {
             "status": "unhealthy",
             "error": str(e)
@@ -121,7 +138,7 @@ def check_redis_ssl_status():
         return ssl_info
 
     except Exception as e:
-        current_app.logger.error(f"Erro ao verificar SSL Redis: {str(e)}")
+        logger.error(f"Erro ao verificar SSL Redis: {str(e)}")
         return {
             "ssl_configured": False,
             "error": str(e)

@@ -8,12 +8,27 @@ from .auth import (
     RefreshResponseSchema
 )
 
+from .user import (
+    UserCreateSchema,
+    UserUpdateSchema,
+    ChangePasswordSchema,
+    UserListQuerySchema,
+    UserResponseSchema as UserDetailResponseSchema
+)
+
 __all__ = [
+    # Auth schemas
     'LoginSchema',
     'RegisterSchema',
     'RefreshTokenSchema',
     'UserResponseSchema',
     'TokenResponseSchema',
     'LoginResponseSchema',
-    'RefreshResponseSchema'
+    'RefreshResponseSchema',
+    # User schemas
+    'UserCreateSchema',
+    'UserUpdateSchema',
+    'ChangePasswordSchema',
+    'UserListQuerySchema',
+    'UserDetailResponseSchema'
 ]

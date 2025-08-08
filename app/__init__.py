@@ -6,12 +6,16 @@ from .errors import register_error_handlers
 from .models import User
 from .services.jwt_service import check_if_token_revoked
 from .swagger import configure_swagger_ui
+from .logging_config import setup_logging
 import os
 
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(get_config())
+
+    # Configura o sistema de logging
+    setup_logging(app)
 
     # Só cria DB SQLite em debug
     if app.config.get('DEBUG'):
