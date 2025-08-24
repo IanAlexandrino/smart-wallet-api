@@ -397,19 +397,11 @@ components:
           description: Lista de usuários
           items:
             $ref: "#/components/schemas/UserResponse"
-        pagination:
-          $ref: "#/components/schemas/PaginationInfo"
-        search:
-          type: string
-          description: Termo de busca aplicado
-          example: "joão"
-          nullable: true
-        role:
-          type: string
-          description: Filtro de role aplicado
-          example: "admin"
-          enum: ["user", "admin"]
-          nullable: true
+        meta:
+          type: object
+          properties:
+            pagination:
+              $ref: "#/components/schemas/PaginationInfo"
 
     PaginationInfo:
       type: object
@@ -425,7 +417,7 @@ components:
           example: 20
           minimum: 1
           maximum: 100
-        total_items:
+        total:
           type: integer
           description: Total de itens
           example: 150
@@ -443,16 +435,6 @@ components:
           type: boolean
           description: Se existe próxima página
           example: true
-        prev_page:
-          type: integer
-          description: Número da página anterior
-          example: null
-          nullable: true
-        next_page:
-          type: integer
-          description: Número da próxima página
-          example: 2
-          nullable: true
 
 paths:
   /auth/register:
@@ -985,6 +967,21 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - name: search
+          in: query
+          description: Busca por nome, email ou username
+          required: false
+          schema:
+            type: string
+            example: "joão"
+        - name: role
+          in: query
+          description: Filtro por role
+          required: false
+          schema:
+            type: string
+            enum: ["user", "admin"]
+            example: "admin"
         - name: page
           in: query
           description: Número da página
@@ -1004,21 +1001,6 @@ paths:
             maximum: 100
             default: 20
             example: 20
-        - name: search
-          in: query
-          description: Busca por nome, email ou username
-          required: false
-          schema:
-            type: string
-            example: "joão"
-        - name: role
-          in: query
-          description: Filtro por role
-          required: false
-          schema:
-            type: string
-            enum: ["user", "admin"]
-            example: "admin"
       responses:
         "200":
           description: Lista de usuários retornada com sucesso
@@ -1038,65 +1020,60 @@ paths:
                     status: "success"
                     message: "Usuários listados com sucesso"
                     data:
-                      data:
-                        - id: 1
-                          username: "admin"
-                          email: "admin@empresa.com"
-                          first_name: "Admin"
-                          last_name: "Sistema"
-                          phone: null
-                          birth_date: null
-                          full_name: "Admin Sistema"
-                          role: "admin"
-                          is_active: true
-                        - id: 2
-                          username: "joao.silva"
-                          email: "joao@empresa.com"
-                          first_name: "João"
-                          last_name: "Silva"
-                          phone: "+5511999999999"
-                          birth_date: "1990-05-15"
-                          full_name: "João Silva"
-                          role: "user"
-                          is_active: true
+                      - id: 1
+                        username: "admin"
+                        email: "admin@empresa.com"
+                        first_name: "Admin"
+                        last_name: "Sistema"
+                        phone: null
+                        birth_date: null
+                        full_name: "Admin Sistema"
+                        role: "admin"
+                        is_active: true
+                      - id: 2
+                        username: "joao.silva"
+                        email: "joao@empresa.com"
+                        first_name: "João"
+                        last_name: "Silva"
+                        phone: "+5511999999999"
+                        birth_date: "1990-05-15"
+                        full_name: "João Silva"
+                        role: "user"
+                        is_active: true
+                    timestamp: "2025-08-24T18:47:54.653079-03:00"
+                    meta:
                       pagination:
                         page: 1
                         per_page: 20
-                        total_items: 2
+                        total: 2
                         total_pages: 1
                         has_prev: false
                         has_next: false
-                        prev_page: null
-                        next_page: null
-                    timestamp: "2025-08-07T14:30:00.000Z"
                 lista_filtrada:
                   summary: Lista filtrada por role
                   value:
                     status: "success"
                     message: "Usuários listados com sucesso"
                     data:
-                      data:
-                        - id: 1
-                          username: "admin"
-                          email: "admin@empresa.com"
-                          first_name: "Admin"
-                          last_name: "Sistema"
-                          phone: null
-                          birth_date: null
-                          full_name: "Admin Sistema"
-                          role: "admin"
-                          is_active: true
+                      - id: 1
+                        username: "admin"
+                        email: "admin@empresa.com"
+                        first_name: "Admin"
+                        last_name: "Sistema"
+                        phone: null
+                        birth_date: null
+                        full_name: "Admin Sistema"
+                        role: "admin"
+                        is_active: true
+                    timestamp: "2025-08-24T18:47:54.653079-03:00"
+                    meta:
                       pagination:
                         page: 1
                         per_page: 20
-                        total_items: 1
+                        total: 1
                         total_pages: 1
                         has_prev: false
                         has_next: false
-                        prev_page: null
-                        next_page: null
-                      role: "admin"
-                    timestamp: "2025-08-07T14:30:00.000Z"
         "400":
           description: Parâmetros inválidos
           content:
