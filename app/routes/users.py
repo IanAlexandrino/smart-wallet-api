@@ -15,7 +15,7 @@ from app.schemas import (
 from app.services.user_service import UserService
 from app.decorators.auth import auth_required, role_required, own_resource_or_admin_required
 from app.decorators.validation import validate_json_content_type
-from app.responses import success_response
+from app.responses import success_response, paginated_response
 from app.utils import PaginationHelper
 
 
@@ -80,29 +80,11 @@ def list_users():
     # Serializa usuários
     users_data = user_response_schema.dump(users, many=True)
 
-    # Calcula informações de paginação
-    pagination_info = PaginationHelper.calculate_pagination_info(
-        total_items=total_count,
+    return paginated_response(
+        data=users_data,
         page=pagination_params['page'],
-        per_page=pagination_params['per_page']
-    )
-
-    # Prepara dados adicionais (filtros aplicados)
-    additional_data = {}
-    if query_params.get('search'):
-        additional_data['search'] = query_params['search']
-    if query_params.get('role'):
-        additional_data['role'] = query_params['role']
-
-    # Formata resposta usando o padrão do PaginationHelper
-    response_data = PaginationHelper.format_paginated_response(
-        items=users_data,
-        pagination_info=pagination_info,
-        additional_data=additional_data if additional_data else None
-    )
-
-    return success_response(
-        data=response_data,
+        per_page=pagination_params['per_page'],
+        total=total_count,
         message="Usuários listados com sucesso"
     )
 
